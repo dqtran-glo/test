@@ -18,7 +18,7 @@ jobs:
       - name: Push to Repo B
         env:
           # Format: https://<token>@github.com/owner/repo-b.git
-          DEST_REPO: "https://${{ secrets.PAT_TOKEN }}@github.com/YOUR_ORG/REPO_B.git"
+          DEST_REPO: "https://${{ secrets.PAT_TOKEN }}@github.com/dqtran-glo/test2.git"
         run: |
           # Configure Git
           git config --global user.name "github-actions[bot]"
@@ -34,7 +34,7 @@ jobs:
         run: |
           # Use the GitHub CLI (gh) to create the PR in the destination repo
           gh pr create \
-            --repo YOUR_ORG/REPO_B \
+            --repo dqtran-glo/test2 \
             --title "Sync: ${{ github.event.head_commit.message }}" \
             --body "Automated PR from Repo A. Triggered by commit ${{ github.sha }}" \
             --head ${{ github.ref_name }} \
