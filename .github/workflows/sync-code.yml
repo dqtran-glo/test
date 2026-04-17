@@ -1,0 +1,21 @@
+name: Log Branch History
+
+on:
+  push:
+    branches: [ main, develop ] # Change these to your specific branches
+  workflow_dispatch:          # Allows you to run this manually
+
+jobs:
+  log-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          # "0" indicates all history for all branches and tags
+          fetch-depth: 0
+
+      - name: Log Commit History
+        run: |
+          echo "### Full Commit History for ${{ github.ref_name }} ###"
+          git log --oneline --graph --decorate -n 20
