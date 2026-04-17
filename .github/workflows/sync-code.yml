@@ -3,8 +3,8 @@ name: Sync to Repo B
 on:
   push:
     branches:
-        - develop
-        - main
+      - develop
+      - main 
 
 jobs:
   create-pr-in-repo-b:
@@ -17,25 +17,34 @@ jobs:
 
       - name: Push to Repo B
         env:
-          # Format: https://<token>@github.com/owner/repo-b.git
-          DEST_REPO: "https://${{ secrets.PAT_TOKEN }}@github.com/dqtran-glo/test2.git"
+          PAT: ${{ secrets.PAT_TOKEN }}
+          # Construct the URL with the token directly for the push command
+          DEST_URL: "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/dqtran-glo/test2.git"
         run: |
-          # Configure Git
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Add Repo B as a remote and push the current branch
-          git remote add destination $DEST_REPO
-          git push destination ${{ github.ref_name }} --force
+          # Add Repo B as a remote
+          git remote add destination "$DEST_URL"
+          
+          # Push the local branch to a branch of the SAME name on Repo B
+          # Syntax: git push remote local_branch_name:remote_branch_name
+          git push destination ${{ github.ref_name }}:${{ github.ref_name }} --force
 
       - name: Create Pull Request in Repo B
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          # Use the GitHub CLI (gh) to create the PR in the destination repo
-          gh pr create \
-            --repo dqtran-glo/test2 \
-            --title "Sync: ${{ github.event.head_commit.message }}" \
-            --body "Automated PR from Repo A. Triggered by commit ${{ github.sha }}" \
-            --head ${{ github.ref_name }} \
-            --base main
+          # Check if a PR already exists for this branch to prevent workflow failure
+          PR_EXISTS=$(gh pr list --repo dqtran-glo/test2 --head ${{ github.ref_name }} --json number --jq '.[0].number')
+          
+          if [ -z "$PR_EXISTS" ]; then
+            gh pr create \
+              --repo dqtran-glo/test2 \
+              --title "Sync: ${{ github.ref_name }} from Repo A" \
+              --body "Automated sync from Repo A. Triggered by commit ${{ github.sha }}" \
+              --head ${{ github.ref_name }} \
+              --base main
+          else
+            echo "PR already exists (#$PR_EXISTS). Updates were pushed to the existing PR."
+          fi
