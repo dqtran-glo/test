@@ -11,10 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       REPO_B: dqtran-glo/test2
-      # Never push to BASE_BRANCH on repo B; only push this head branch, then open a PR into BASE_BRANCH.
+      # PRs merge into this branch on repo B (never updated directly by git push in this workflow).
       BASE_BRANCH: main
       SOURCE_REF: ${{ github.ref_name }}
-      SYNC_BRANCH: sync/${{ github.ref_name }}
     steps:
       - name: Checkout Repo A
         uses: actions/checkout@v4
@@ -24,13 +23,22 @@ jobs:
           # github.com, and git push uses that (github-actions[bot]) instead of the PAT in the URL.
           persist-credentials: false
 
-      - name: Push sync branch to Repo B (does not update main)
+      - name: Push head branch to Repo B (same name as repo A when possible)
         env:
           PAT: ${{ secrets.PAT_TOKEN }}
         run: |
           echo "PAT length: ${#PAT}"
-          if [ "$SYNC_BRANCH" = "$BASE_BRANCH" ]; then
-            echo "Refusing to push: SYNC_BRANCH must not equal BASE_BRANCH (would bypass PR)."
+
+          # Same branch name on B as on A, unless that would make head == base (GitHub rejects main→main PRs).
+          if [ "$SOURCE_REF" = "$BASE_BRANCH" ]; then
+            PR_HEAD_BRANCH="incoming-${SOURCE_REF}"
+          else
+            PR_HEAD_BRANCH="$SOURCE_REF"
+          fi
+          echo "PR_HEAD_BRANCH=$PR_HEAD_BRANCH" >> "$GITHUB_ENV"
+
+          if [ "$PR_HEAD_BRANCH" = "$BASE_BRANCH" ]; then
+            echo "Refusing to push: head branch would equal BASE_BRANCH."
             exit 1
           fi
 
@@ -40,22 +48,21 @@ jobs:
           DEST_URL="https://x-access-token:${PAT}@github.com/${REPO_B}.git"
           git remote add destination "$DEST_URL"
 
-          # Explicit refspec: only refs/heads/$SYNC_BRANCH on repo B is created/updated — not main.
-          git push destination "refs/heads/${SOURCE_REF}:refs/heads/${SYNC_BRANCH}" --force
+          git push destination "refs/heads/${SOURCE_REF}:refs/heads/${PR_HEAD_BRANCH}" --force
 
       - name: Create Pull Request in Repo B
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          PR_EXISTS=$(gh pr list --repo "$REPO_B" --head "$SYNC_BRANCH" --base "$BASE_BRANCH" --json number --jq '.[0].number')
+          PR_EXISTS=$(gh pr list --repo "$REPO_B" --head "$PR_HEAD_BRANCH" --base "$BASE_BRANCH" --json number --jq '.[0].number')
 
           if [ -z "$PR_EXISTS" ] || [ "$PR_EXISTS" = "null" ]; then
             gh pr create \
               --repo "$REPO_B" \
               --title "Sync: ${SOURCE_REF} from Repo A" \
               --body "Automated sync from Repo A. Triggered by commit ${{ github.sha }}" \
-              --head "$SYNC_BRANCH" \
+              --head "$PR_HEAD_BRANCH" \
               --base "$BASE_BRANCH"
           else
-            echo "PR already exists (#$PR_EXISTS). Updates were pushed to the existing PR branch $SYNC_BRANCH."
+            echo "PR already exists (#$PR_EXISTS). Updates were pushed to branch $PR_HEAD_BRANCH."
           fi
