@@ -1,62 +1,71 @@
 name: Sync to Repo B
 
 on:
-  push:
+  pull_request:
+    types:
+      - closed
     branches:
-      - "**"
+      - develop
 
 jobs:
   create-pr-in-repo-b:
+    if: ${{ github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     env:
       REPO_B: dqtran-glo/test2
       BASE_BRANCH: main
-      SOURCE_REF: ${{ github.ref_name }}
-      TRIGGER_SHA: ${{ github.sha }}
+      SOURCE_REF: ${{ github.event.pull_request.head.ref }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: Checkout Repo A
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ env.HEAD_SHA }}
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Push single commit to Repo B (same branch name as Repo A)
+      - name: Rebuild merged PR commits onto Repo B branch
+        id: sync_commits
         env:
           PAT: ${{ secrets.PAT_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           set -euo pipefail
-          echo "PAT length: ${#PAT}"
-
-          if git rev-parse --verify --quiet "${TRIGGER_SHA}^2" >/dev/null 2>&1; then
-            echo "Skipping: workflow trigger is a merge commit ($TRIGGER_SHA). Only non-merge commits are synced."
-            echo "WORKFLOW_STOP=1" >> "$GITHUB_ENV"
-            exit 0
-          fi
-
-          export GIT_AUTHOR_NAME="$(git show -s --format=%an "$TRIGGER_SHA")"
-          export GIT_AUTHOR_EMAIL="$(git show -s --format=%ae "$TRIGGER_SHA")"
-          export GIT_AUTHOR_DATE="$(git show -s --format=%ai "$TRIGGER_SHA")"
-          export GIT_COMMITTER_NAME="$(git show -s --format=%cn "$TRIGGER_SHA")"
-          export GIT_COMMITTER_EMAIL="$(git show -s --format=%ce "$TRIGGER_SHA")"
-          export GIT_COMMITTER_DATE="$(git show -s --format=%ci "$TRIGGER_SHA")"
-
+          echo "workflow_stop=false" >> "$GITHUB_OUTPUT"
           DEST_URL="https://x-access-token:${PAT}@github.com/${REPO_B}.git"
           git remote add destination "$DEST_URL"
 
-          # Parent must be Repo B's BASE_BRANCH tip so the head branch shares history with the PR base
-          # (orphan commits cause: "branch has no history in common with main").
           git fetch destination "+refs/heads/${BASE_BRANCH}:refs/__sync_parent__"
-          PARENT="$(git rev-parse refs/__sync_parent__)"
+          PARENT_SHA="$(git rev-parse refs/__sync_parent__)"
+          NEW_HEAD_SHA="$PARENT_SHA"
 
-          TREE="$(git rev-parse "$TRIGGER_SHA^{tree}")"
-          SINGLE_SHA="$(git show -s --format=%B "$TRIGGER_SHA" | git commit-tree "$TREE" -p "$PARENT")"
+          # Build a matching commit sequence from the merged PR in Repo A.
+          COMMIT_LIST="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits" --jq '.[].sha')"
+          if [ -z "$COMMIT_LIST" ]; then
+            echo "No commits found on PR #${PR_NUMBER}; nothing to sync."
+            echo "workflow_stop=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-          # One new commit on top of Repo B's BASE_BRANCH; same tree/message/author as TRIGGER_SHA on Repo A.
-          git push destination "${SINGLE_SHA}:refs/heads/${SOURCE_REF}" --force
+          while IFS= read -r PR_COMMIT_SHA; do
+            [ -z "$PR_COMMIT_SHA" ] && continue
+
+            export GIT_AUTHOR_NAME="$(git show -s --format=%an "$PR_COMMIT_SHA")"
+            export GIT_AUTHOR_EMAIL="$(git show -s --format=%ae "$PR_COMMIT_SHA")"
+            export GIT_AUTHOR_DATE="$(git show -s --format=%ai "$PR_COMMIT_SHA")"
+            export GIT_COMMITTER_NAME="$(git show -s --format=%cn "$PR_COMMIT_SHA")"
+            export GIT_COMMITTER_EMAIL="$(git show -s --format=%ce "$PR_COMMIT_SHA")"
+            export GIT_COMMITTER_DATE="$(git show -s --format=%ci "$PR_COMMIT_SHA")"
+
+            TREE_SHA="$(git rev-parse "${PR_COMMIT_SHA}^{tree}")"
+            NEW_HEAD_SHA="$(git show -s --format=%B "$PR_COMMIT_SHA" | git commit-tree "$TREE_SHA" -p "$NEW_HEAD_SHA")"
+          done <<< "$COMMIT_LIST"
+
+          git push destination "${NEW_HEAD_SHA}:refs/heads/${SOURCE_REF}" --force
 
       - name: Create Pull Request in Repo B
-        if: ${{ env.WORKFLOW_STOP != '1' && env.SOURCE_REF != env.BASE_BRANCH }}
+        if: ${{ steps.sync_commits.outputs.workflow_stop != 'true' && env.SOURCE_REF != env.BASE_BRANCH }}
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
@@ -67,7 +76,7 @@ jobs:
             gh pr create \
               --repo "$REPO_B" \
               --title "Sync: ${SOURCE_REF} from Repo A" \
-              --body "Automated sync from Repo A (single commit from \`${TRIGGER_SHA}\`)." \
+              --body "Automated sync from merged PR #${PR_NUMBER} in \`${GITHUB_REPOSITORY}\`." \
               --head "$SOURCE_REF" \
               --base "$BASE_BRANCH"
           else
