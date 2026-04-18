@@ -21,6 +21,7 @@ jobs:
           # Construct the URL with the token directly for the push command
           DEST_URL: "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/dqtran-glo/test2.git"
         run: |
+          echo "PAT length: ${#PAT}"
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
