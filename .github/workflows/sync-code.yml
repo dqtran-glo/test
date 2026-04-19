@@ -26,6 +26,8 @@ jobs:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
        
+          echo "test"
+
           git checkout $SOURCE_BRANCH
 
           if [ -d ".github/workflows" ]; then
