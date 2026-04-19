@@ -32,10 +32,19 @@ jobs:
           # We use the head_sha to ensure we get the exact state of the PR
           git push destination ${{ github.event.pull_request.head.ref }}:refs/heads/$SOURCE_BRANCH --force
 
-          # 3. Create PR in Repo B
-          gh pr create \
-            --repo $REPO_B_NAME \
-            --head $SOURCE_BRANCH \
-            --base main \
-            --title "Sync: $SOURCE_BRANCH" \
-            --body "Automated sync from Repo A PR #${{ github.event.pull_request.number }}"
+          # 4. Auth and Create PR
+          echo "${{ secrets.PAT_TOKEN }}" | gh auth login --with-token
+            
+          # Check if PR already exists to avoid errors on re-runs
+          PR_EXISTS=$(gh pr list --repo ${REPO_B_NAME} --head ${SOURCE_BRANCH} --json number --jq '.[0].number')
+          
+          if [ -z "$PR_EXISTS" ]; then
+            gh pr create \
+              --repo ${REPO_B_NAME} \
+              --head ${SOURCE_BRANCH} \
+              --base main \
+              --title "Sync: ${SOURCE_BRANCH}" \
+              --body "Automated sync from Repo A"
+          else
+            echo "PR already exists in Repo B: #$PR_EXISTS"
+          fi
