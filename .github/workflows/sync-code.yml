@@ -23,7 +23,6 @@ jobs:
           # Logic: Get the branch name directly from the PR metadata
           SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
           REPO_B_NAME: "dqtran-glo/test2"
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
        
           git checkout $SOURCE_BRANCH
