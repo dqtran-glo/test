@@ -17,6 +17,6 @@ jobs:
           -d '{
             "event_type":"run-from-repo-a",
             "client_payload": {
-              "branch": "${{ github.ref_name }}"
+              "branch": "${{ github.event.pull_request.head.ref }}"
             }
           }'
