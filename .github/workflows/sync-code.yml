@@ -28,6 +28,13 @@ jobs:
        
           git checkout $SOURCE_BRANCH
 
+          if [ -d ".github/workflows" ]; then
+            git rm -rf .github/workflows
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore: exclude workflows for Repo B sync"
+          fi
+
           git remote add destination "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/dqtran-glo/test2.git"              
           
           git push destination $SOURCE_BRANCH --force
