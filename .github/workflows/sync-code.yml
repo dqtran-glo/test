@@ -35,11 +35,6 @@ jobs:
             git commit -m "chore: exclude workflows for Repo B sync"
           fi
 
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "No functional changes detected after ignoring workflows. Stopping pipeline."
-            exit 0
-          fi
-
           git remote add destination "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/dqtran-glo/test2.git"              
           
           git push destination $SOURCE_BRANCH --force
