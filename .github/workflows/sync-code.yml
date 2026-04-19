@@ -19,14 +19,12 @@ jobs:
 
       - name: Push and PR to Repo B
         env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
           # Logic: Get the branch name directly from the PR metadata
           SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
-          DEST_REPO: "https://${{ secrets.PAT_TOKEN }}@github.com/dqtran-glo/test2.git"
           REPO_B_NAME: "dqtran-glo/test2"
         run: |
           # 1. Setup destination
-          git remote add destination $DEST_REPO
+          git remote add destination "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/dqtran-glo/test2.git"              
           
           # 2. Push the specific branch that was just merged
           # We use the head_sha to ensure we get the exact state of the PR
