@@ -30,7 +30,7 @@ jobs:
           
           # 2. Push the specific branch that was just merged
           # We use the head_sha to ensure we get the exact state of the PR
-          git push destination ${{ github.event.pull_request.head.sha }}:refs/heads/$SOURCE_BRANCH --force
+          git push destination ${{ github.event.pull_request.head.ref }}:refs/heads/$SOURCE_BRANCH --force
 
           # 3. Create PR in Repo B
           gh pr create \
