@@ -36,6 +36,6 @@ jobs:
           gh pr create \
             --repo $REPO_B_NAME \
             --head $SOURCE_BRANCH \
-            --base develop \
+            --base main \
             --title "Sync: $SOURCE_BRANCH" \
             --body "Automated sync from Repo A PR #${{ github.event.pull_request.number }}"
