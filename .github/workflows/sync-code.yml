@@ -9,7 +9,6 @@ on:
 
 jobs:
   create-pr-in-repo-b:
-    if: ${{ github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     env:
       REPO_B: dqtran-glo/test2
@@ -38,9 +37,8 @@ jobs:
 
           git fetch destination "+refs/heads/${BASE_BRANCH}:refs/__sync_parent__"
           PARENT_SHA="$(git rev-parse refs/__sync_parent__)"
-          NEW_HEAD_SHA="$PARENT_SHA"
 
-          # Build a matching commit sequence from the merged PR in Repo A.
+          # Build a matching commit sequence from the PR branch in Repo A.
           COMMIT_LIST="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits" --jq '.[].sha')"
           if [ -z "$COMMIT_LIST" ]; then
             echo "No commits found on PR #${PR_NUMBER}; nothing to sync."
@@ -48,20 +46,21 @@ jobs:
             exit 0
           fi
 
+          # Start from Repo B base branch and replay only commit patches from the PR.
+          git checkout --detach "$PARENT_SHA"
+
           while IFS= read -r PR_COMMIT_SHA; do
             [ -z "$PR_COMMIT_SHA" ] && continue
 
-            export GIT_AUTHOR_NAME="$(git show -s --format=%an "$PR_COMMIT_SHA")"
-            export GIT_AUTHOR_EMAIL="$(git show -s --format=%ae "$PR_COMMIT_SHA")"
-            export GIT_AUTHOR_DATE="$(git show -s --format=%ai "$PR_COMMIT_SHA")"
-            export GIT_COMMITTER_NAME="$(git show -s --format=%cn "$PR_COMMIT_SHA")"
-            export GIT_COMMITTER_EMAIL="$(git show -s --format=%ce "$PR_COMMIT_SHA")"
-            export GIT_COMMITTER_DATE="$(git show -s --format=%ci "$PR_COMMIT_SHA")"
-
-            TREE_SHA="$(git rev-parse "${PR_COMMIT_SHA}^{tree}")"
-            NEW_HEAD_SHA="$(git show -s --format=%B "$PR_COMMIT_SHA" | git commit-tree "$TREE_SHA" -p "$NEW_HEAD_SHA")"
+            PARENT_COUNT="$(git show -s --format=%P "$PR_COMMIT_SHA" | wc -w | tr -d ' ')"
+            if [ "$PARENT_COUNT" -gt 1 ]; then
+              git cherry-pick -m 1 "$PR_COMMIT_SHA"
+            else
+              git cherry-pick "$PR_COMMIT_SHA"
+            fi
           done <<< "$COMMIT_LIST"
 
+          NEW_HEAD_SHA="$(git rev-parse HEAD)"
           git push destination "${NEW_HEAD_SHA}:refs/heads/${SOURCE_REF}" --force
 
       - name: Create Pull Request in Repo B
