@@ -3,7 +3,7 @@ name: Sync Merge to Repo B
 on:
   push:
     branches:
-      - develop
+      - main
 
 jobs:
   sync-and-pr:
@@ -29,7 +29,7 @@ jobs:
 
       - name: Push to Repo B
         env:
-          DEST_REPO: "https://${{ secrets.REPO_B_TOKEN }}@github.com/username/repo-b.git"
+          DEST_REPO: "https://${{ secrets.PAT_TOKEN }}@github.com/dqtran-glo/test2.git"
           BRANCH: ${{ steps.extract_branch.outputs.branch_name }}
         run: |
           # Add Repo B as a remote and push the specific branch
@@ -38,9 +38,9 @@ jobs:
 
       - name: Create Pull Request in Repo B
         env:
-          GH_TOKEN: ${{ secrets.REPO_B_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
           BRANCH: ${{ steps.extract_branch.outputs.branch_name }}
-          REPO_B: "username/repo-b"
+          REPO_B: "dqtran-glo/test2"
         run: |
           # Use GitHub CLI to create the PR in the target repo
           gh pr create \
