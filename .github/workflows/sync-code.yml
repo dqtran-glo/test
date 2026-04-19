@@ -25,17 +25,15 @@ jobs:
           REPO_B_NAME: "dqtran-glo/test2"
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          # 1. Setup destination
+       
+          git checkout $SOURCE_BRANCH
+
           git remote add destination "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/dqtran-glo/test2.git"              
           
-          # 2. Push the specific branch that was just merged
-          # We use the head_sha to ensure we get the exact state of the PR
-          git push destination ${{ github.event.pull_request.head.ref }}:refs/heads/$SOURCE_BRANCH --force
-
-          # 4. Auth and Create PR
-          echo "${{ secrets.PAT_TOKEN }}" | gh auth login --with-token
-            
-          # Check if PR already exists to avoid errors on re-runs
+          git push destination $SOURCE_BRANCH --force
+          
+          gh auth login --with-token
+          
           PR_EXISTS=$(gh pr list --repo ${REPO_B_NAME} --head ${SOURCE_BRANCH} --json number --jq '.[0].number')
           
           if [ -z "$PR_EXISTS" ]; then
