@@ -1,51 +1,41 @@
-name: Sync Merge to Repo B
+name: Sync to Repo B (Metadata Version)
 
 on:
-  push:
+  pull_request:
     branches:
       - main
+    types: [closed]
 
 jobs:
-  sync-and-pr:
+  sync:
+    # Only run if the PR was actually merged, not just closed
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo A
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Necessary to find the merge commit history
+          fetch-depth: 0
 
-      - name: Extract Source Branch Name
-        id: extract_branch
-        run: |
-          # Grabs the branch name from the merge commit message
-          # Example: "Merge pull request #1 from origin/feature-xyz"
-          RAW_BRANCH=$(git log -1 --pretty=%B | grep -oP '(?<=from ).*' | sed 's/origin\///')
-          
-          if [ -z "$RAW_BRANCH" ]; then
-            echo "Could not identify source branch. Was this a direct push?"
-            exit 1
-          fi
-          echo "branch_name=$RAW_BRANCH" >> $GITHUB_OUTPUT
-
-      - name: Push to Repo B
-        env:
-          DEST_REPO: "https://${{ secrets.PAT_TOKEN }}@github.com/dqtran-glo/test2.git"
-          BRANCH: ${{ steps.extract_branch.outputs.branch_name }}
-        run: |
-          # Add Repo B as a remote and push the specific branch
-          git remote add destination $DEST_REPO
-          git push destination HEAD:refs/heads/$BRANCH --force
-
-      - name: Create Pull Request in Repo B
+      - name: Push and PR to Repo B
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
-          BRANCH: ${{ steps.extract_branch.outputs.branch_name }}
-          REPO_B: "dqtran-glo/test2"
+          # Logic: Get the branch name directly from the PR metadata
+          SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
+          DEST_REPO: "https://${{ secrets.PAT_TOKEN }}@github.com/dqtran-glo/test2.git"
+          REPO_B_NAME: "dqtran-glo/test2"
         run: |
-          # Use GitHub CLI to create the PR in the target repo
+          # 1. Setup destination
+          git remote add destination $DEST_REPO
+          
+          # 2. Push the specific branch that was just merged
+          # We use the head_sha to ensure we get the exact state of the PR
+          git push destination ${{ github.event.pull_request.head.sha }}:refs/heads/$SOURCE_BRANCH --force
+
+          # 3. Create PR in Repo B
           gh pr create \
-            --repo $REPO_B \
-            --head $BRANCH \
-            --base develop \
-            --title "Sync: $BRANCH from Repo A" \
-            --body "Automated PR created from Repo A merge to develop."
+            --repo $REPO_B_NAME \
+            --head $SOURCE_BRANCH \
+            --base main \
+            --title "Sync: $SOURCE_BRANCH" \
+            --body "Automated sync from Repo A PR #${{ github.event.pull_request.number }}"
