@@ -5,51 +5,18 @@ on:
     branches:
       - main
     types: [closed]
-
 jobs:
-  sync:
-    # Only run if the PR was actually merged, not just closed
-    if: github.event.pull_request.merged == true
+  trigger:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repo A
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Push and PR to Repo B
-        env:
-          # Logic: Get the branch name directly from the PR metadata
-          SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
-          REPO_B_NAME: "dqtran-glo/test2"
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+      - name: Trigger Repo B
         run: |
-       
-          echo "test"
-
-          git checkout $SOURCE_BRANCH
-
-          if [ -d ".github/workflows" ]; then
-            git rm -rf .github/workflows
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git commit -m "chore: exclude workflows for Repo B sync"
-          fi
-
-          git remote add destination "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/dqtran-glo/test2.git"              
-          
-          git push destination $SOURCE_BRANCH --force
-          
-          PR_EXISTS=$(gh pr list --repo ${REPO_B_NAME} --head ${SOURCE_BRANCH} --json number --jq '.[0].number')
-          
-          if [ -z "$PR_EXISTS" ]; then
-            gh pr create \
-              --repo ${REPO_B_NAME} \
-              --head ${SOURCE_BRANCH} \
-              --base main \
-              --title "Sync: ${SOURCE_BRANCH}" \
-              --body "Automated sync from Repo A"
-          else
-            echo "PR already exists in Repo B: #$PR_EXISTS"
-          fi
+          curl -X POST https://api.github.com/repos/dqtran-glo/test2/dispatches \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
+          -d '{
+            "event_type":"run-from-repo-a",
+            "client_payload": {
+              "branch": "${{ github.ref_name }}"
+            }
+          }'
