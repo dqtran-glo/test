@@ -23,6 +23,7 @@ jobs:
           # Logic: Get the branch name directly from the PR metadata
           SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
           REPO_B_NAME: "dqtran-glo/test2"
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           # 1. Setup destination
           git remote add destination "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/dqtran-glo/test2.git"              
