@@ -46,6 +46,12 @@ jobs:
           repository: dqtran-glo/test2
           path: test2
 
+
+      - name: print current directory
+        working-directory: test2
+        run: |
+          echo "CURRENT_DIRECTORY=${{ github.workspace }}"
+          echo "CURRENT_REPO=${{ github.repository }}"
       - name: add upstream remote
         working-directory: test2
         env:
