@@ -41,7 +41,8 @@ jobs:
         env:
           REPO_NAME: "dqtran-glo/test2"
         run: |
-          git remote add upstream https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${REPO_NAME}.git
+          git remote get-url upstream > /dev/null 2>&1 \
+           || git remote add upstream https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${REPO_NAME}.git
 
       - name: fetch upstream
         run: |
