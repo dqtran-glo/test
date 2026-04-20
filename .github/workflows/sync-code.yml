@@ -44,7 +44,7 @@ jobs:
           git remote add upstream https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${REPO_NAME}.git
           git fetch upstream
           git checkout -b $SOURCE_BRANCH
-          git cherry-pick upstream/$BRANCH_NAME
+          git cherry-pick upstream/$SOURCE_BRANCH
           git push origin $SOURCE_BRANCH
 
           PR_EXISTS=$(gh pr list --repo ${REPO_NAME} --head ${SOURCE_BRANCH} --json number --jq '.[0].number')
