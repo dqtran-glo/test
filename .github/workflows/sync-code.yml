@@ -28,9 +28,13 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
+      # - name: set branch name
+      #   run: |
+      #     echo "SOURCE_BRANCH=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
+
       - name: set branch name
         run: |
-          echo "SOURCE_BRANCH=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
+          echo "SOURCE_BRANCH=feat/dat-8" >> $GITHUB_ENV
 
       - name: checkout repo test2
         uses: actions/checkout@v4
