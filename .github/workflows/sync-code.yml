@@ -55,9 +55,7 @@ jobs:
         id: check-branch
         env: 
           REPO_NAME: "dqtran-glo/test2"
-        run: |
-          git remote add upstream https://github.com/${REPO_NAME}.git
-      
+        run: |      
           if git ls-remote --exit-code --heads upstream "$SOURCE_BRANCH" > /dev/null; then
             echo "exists=true" >> $GITHUB_OUTPUT
           else
