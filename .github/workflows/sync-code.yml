@@ -77,6 +77,11 @@ jobs:
       #   run: |
       #     echo "Source branch does not exist in Repo A"
       #     exit 1
+
+
+      - name: print current repo
+        run: |
+          echo "CURRENT_REPO=${{ github.repository }}"
       
       - name: create source branch
         run: |
