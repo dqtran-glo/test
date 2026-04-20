@@ -47,6 +47,7 @@ jobs:
           path: test2
 
       - name: add upstream remote
+        working-directory: test2
         env:
           REPO_NAME: "dqtran-glo/test2"
         run: |
@@ -57,6 +58,7 @@ jobs:
           fi
 
       - name: fetch upstream
+        working-directory: test2
         run: |
           git fetch upstream
 
@@ -77,25 +79,24 @@ jobs:
       #   run: |
       #     echo "Source branch does not exist in Repo A"
       #     exit 1
-
-
-      - name: print current repo
-        run: |
-          echo "CURRENT_REPO=${{ github.repository }}"
       
       - name: create source branch
+        working-directory: test2
         run: |
           git checkout -b $SOURCE_BRANCH
 
       - name: cherry-pick source branch
+        working-directory: test2
         run: |
           git cherry-pick upstream/$SOURCE_BRANCH
 
       - name: push source branch
+        working-directory: test2
         run: |
           git push origin $SOURCE_BRANCH
 
       - name: create PR if missing
+        working-directory: test2
         env:
           REPO_NAME: "dqtran-glo/test2"
         run: |
