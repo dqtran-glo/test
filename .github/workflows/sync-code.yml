@@ -4,19 +4,57 @@ on:
   pull_request:
     branches:
       - main
-    types: [closed]
+    types: [ closed ]
 jobs:
-  trigger:
+  # trigger:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Trigger Repo B
+  #       run: |
+  #         curl -X POST https://api.github.com/repos/dqtran-glo/test2/dispatches \
+  #         -H "Accept: application/vnd.github+json" \
+  #         -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
+  #         -d '{
+  #           "event_type":"run-from-repo-a",
+  #           "client_payload": {
+  #             "branch": "${{ github.event.pull_request.head.ref }}"
+  #           }
+  #         }'
+
+  sync-code:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Repo B
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: set branch name
         run: |
-          curl -X POST https://api.github.com/repos/dqtran-glo/test2/dispatches \
-          -H "Accept: application/vnd.github+json" \
-          -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
-          -d '{
-            "event_type":"run-from-repo-a",
-            "client_payload": {
-              "branch": "${{ github.event.pull_request.head.ref }}"
-            }
-          }'
+          echo "SOURCE_BRANCH=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
+
+      - name: checkout repo test2
+        uses: actions/checkout@v4
+        with:
+          repository: dqtran-glo/test2
+          path: test2
+
+      - name: sync code
+        env:
+          REPO_NAME: "dqtran-glo/test2"
+        run: |
+          git remote add upstream https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${REPO_NAME}.git
+          git fetch upstream
+          git checkout -b $SOURCE_BRANCH
+          git cherry-pick upstream/$BRANCH_NAME
+          git push origin $SOURCE_BRANCH
+
+          PR_EXISTS=$(gh pr list --repo ${REPO_NAME} --head ${SOURCE_BRANCH} --json number --jq '.[0].number')
+          if [ -z "$PR_EXISTS" ]; then
+              gh pr create \
+                --repo ${REPO_NAME} \
+                --head ${SOURCE_BRANCH} \
+                --base main \
+                --title "Sync: ${SOURCE_BRANCH}" \
+                --body "Automated sync from Repo A"
+            else
+              echo "PR already exists in Repo A: #$PR_EXISTS"
+            fi
