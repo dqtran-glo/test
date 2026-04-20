@@ -1,6 +1,7 @@
 name: Sync to Repo B (Metadata Version)
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - main
@@ -51,23 +52,23 @@ jobs:
         run: |
           git fetch upstream
 
-      - name: check if source branch exists
-        id: check-branch
-        env: 
-          REPO_NAME: "dqtran-glo/test2"
-        run: |      
-          if git ls-remote --exit-code --heads upstream "$SOURCE_BRANCH" > /dev/null; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
+      # - name: check if source branch exists
+      #   id: check-branch
+      #   env: 
+      #     REPO_NAME: "dqtran-glo/test2"
+      #   run: |      
+      #     if git ls-remote --exit-code --heads upstream "$SOURCE_BRANCH" > /dev/null; then
+      #       echo "exists=true" >> $GITHUB_OUTPUT
+      #     else
+      #       echo "exists=false" >> $GITHUB_OUTPUT
+      #     fi
 
 
-      - name: stop if branch does not exist
-        if: steps.check-branch.outputs.exists == 'false'
-        run: |
-          echo "Source branch does not exist in Repo A"
-          exit 1
+      # - name: stop if branch does not exist
+      #   if: steps.check-branch.outputs.exists == 'false'
+      #   run: |
+      #     echo "Source branch does not exist in Repo A"
+      #     exit 1
       
       - name: create source branch
         run: |
