@@ -45,19 +45,12 @@ jobs:
         with:
           repository: dqtran-glo/test2
           path: test2
-
-
-      - name: print current directory
-        run: |
-          cd test2
-          git remote -v
-          echo "CURRENT_DIRECTORY=${{ github.workspace }}"
-          echo "CURRENT_REPO=${{ github.repository }}"
       - name: add upstream remote
-        working-directory: test2
+     
         env:
           REPO_NAME: "dqtran-glo/test2"
         run: |
+          cd test2  
           if git remote get-url upstream > /dev/null 2>&1; then
             echo "upstream already exists"
           else
@@ -67,6 +60,7 @@ jobs:
       - name: fetch upstream
         working-directory: test2
         run: |
+          cd test2  
           git fetch upstream
 
       # - name: check if source branch exists
@@ -88,25 +82,25 @@ jobs:
       #     exit 1
       
       - name: create source branch
-        working-directory: test2
         run: |
+          cd test2  
           git checkout -b $SOURCE_BRANCH
 
       - name: cherry-pick source branch
-        working-directory: test2
         run: |
+          cd test2  
           git cherry-pick upstream/$SOURCE_BRANCH
 
       - name: push source branch
-        working-directory: test2
         run: |
+          cd test2  
           git push origin $SOURCE_BRANCH
 
       - name: create PR if missing
-        working-directory: test2
         env:
           REPO_NAME: "dqtran-glo/test2"
         run: |
+          cd test2
           PR_EXISTS=$(gh pr list --repo ${REPO_NAME} --head ${SOURCE_BRANCH} --json number --jq '.[0].number')
           if [ -z "$PR_EXISTS" ]; then
               gh pr create \
